@@ -9,7 +9,7 @@
  * Added GPS Valid Gren/Red box ***ONLY valid if 
  * GPS SAT signal is lost, not if wire #19 is 
  * pulled out and Arduino is not receiving signals.***
- * Heading needle leaves blue traces
+ * Added Dist and Heading to Capitol Airport Waukesha WI (can be changed)
  * NEED TO FIX GPS TIME ******************************************************
 */
 
@@ -44,6 +44,7 @@ String    Time, Date;
 float     NumberSats, Latitude, Longitude, Bearing;
 float     AltitudeMETRES, AltitudeMILES, AltitudeKM, AltitudeFEET;
 float     SpeedKPH, SpeedMPH, SpeedKNOTS, SpeedMPS;
+//float     distanceToLondon;           /////////////////////////
 
 const int centreX  = 230; // Location of the compass display on screen
 const int centreY  = 120;
@@ -87,12 +88,47 @@ void loop() {
   AltitudeKM     = gps.altitude.kilometers();
   AltitudeMILES  = gps.altitude.miles();
   AltitudeFEET   = gps.altitude.feet();
+  
 
-// ********* This works ONLY if SAT signal is lost NOT if Pin19 is pulled out *******
+// ********* GPS GOOD? This works ONLY if SAT signal is lost NOT if Pin19 is pulled out *******
 if (gps.satellites.value ()> 3 )
-   tft.fillRect(5, 5, 25, 8 * 4, GREEN); 
+   tft.fillRect(0, 0, 30, 8 * 4, GREEN); 
 else   
-   tft.fillRect(5, 5, 25, 8 * 4, RED);     //left,top,right,down * 4?, Green
+   tft.fillRect(0, 0, 30, 8 * 4, RED);     //left,top,right,down * 4?, Green
+
+// *** Adding Dist & Course to Capitol *******************************************
+if (gps.location.isValid())
+{
+  static const double CAPITOL_LAT = 43.089619, CAPITOL_LON = -88.179440;
+      double distanceToLondon =
+        TinyGPSPlus::distanceBetween(
+          gps.location.lat(),
+          gps.location.lng(),
+          CAPITOL_LAT, 
+          CAPITOL_LON);
+      double courseToLondon =
+        TinyGPSPlus::courseTo(
+          gps.location.lat(),
+          gps.location.lng(),
+          CAPITOL_LAT, 
+          CAPITOL_LON);
+
+      Serial.print(F("CAPITOL Distance="));
+      Serial.print(distanceToLondon/1000*.6213712, 2);        // *0.6213712  *** change from KM o miles!!!!!!!!!
+      Serial.print(F(" MILES Course-to="));
+      Serial.print(courseToLondon, 6);
+      Serial.print(F(" degrees ["));
+      Serial.print(TinyGPSPlus::cardinal(courseToLondon));
+      Serial.println(F("]"));
+      tft.setTextColor(CYAN);
+      tft.setCursor(150, 0);                                // Sets it back to not print over "Capitol"
+      tft.println(TinyGPSPlus::cardinal(courseToLondon));   // Prints "SE" or cardinal heading on TFT
+      tft.setCursor(190, 0);
+      tft.println(distanceToLondon/1000*.6213712, 1);       // Prints Distance to capitol
+      tft.setCursor(235, 0);
+      tft.print("Miles");
+  }
+// end Addding Distance & Heading to Capitol
 
       
   while (Serial1.available() > 0)
@@ -131,6 +167,7 @@ else
   Serial.print(String(Bearing)        + "\t");
   Serial.print(String(SpeedKPH)       + "\t"); // Select as required
   Serial.print(String(SpeedMPH)       + "\t"); // Select as required
+  //Serial.print(String(distanceToLondon) +  "\t"); ///////////////////////////////
   Serial.println("\n");
   DisplayGPSdata(NumberSats, Latitude, Longitude, AltitudeMETRES, SpeedKPH, Bearing); // Select units as required
   smartDelay(1000);
@@ -139,7 +176,8 @@ else
 //#####################################################################
 void DisplayGPSdata(float dNumberSats, float dLatitude, float dLongitude, float dAltitude, float dSpeed, float dBearing) {
   
-  PrintText(60, 0, "   GPS Compass", CYAN, 2);
+  PrintText(20, 0, "  CAPITOL", CYAN, 2);
+  //PrintText(40, 0, "distanceToLondon:" + String(),2, 2);        //////////////
   tft.fillRect(45, 40, 90, 19 * 4, BLACK);
   PrintText(0, 45, "LAT:" + String(dLatitude), YELLOW, 2);
   PrintText(0, 63, "LON:" + String(dLongitude), YELLOW, 2);
@@ -171,7 +209,7 @@ void Display_Compass(float dBearing) {
   PrintText((centreX - diameter - 15), (centreY - 5), "W", GREEN, 2);
   dx = (0.85 * diameter * cos((dBearing - 90) * 3.14 / 180)) + centreX; // calculate X position
   dy = (0.85 * diameter * sin((dBearing - 90) * 3.14 / 180)) + centreY; // calculate Y position
-  draw_arrow(last_dx, last_dy, centreX, centreY, 5, 5, BLUE);   // Erase last arrow
+  draw_arrow(last_dx, last_dy, centreX, centreY, 5, 5, BLACK);   // Erase last arrow
   draw_arrow(dx, dy, centreX, centreY, 5, 5, YELLOW);           // Draw arrow in new position
   last_dx = dx;
   last_dy = dy;
