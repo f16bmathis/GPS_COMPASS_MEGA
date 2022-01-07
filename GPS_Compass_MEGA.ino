@@ -1,30 +1,30 @@
-/*
+/* 
  * MEGA
  * RED TFT (ILI9341)
  * Pin19  to 4th pin on sensor
  * GPS Sensor GT-U7
  * Displays Compass and GPS headers, SEEMS TO WORK!
- * A lot of work to make it perfect.
+ * Changed KPH to MPH
+ * Changed Altitude Meters to Feet
+ * Added GPS Valid Gren/Red box ***ONLY valid if 
+ * GPS SAT signal is lost, not if wire #19 is 
+ * pulled out and Arduino is not receiving signals.***
+ * Heading needle leaves blue traces
+ * NEED TO FIX GPS TIME ******************************************************
 */
 
 #include <TinyGPSPlus.h>
 #include <SoftwareSerial.h>
-static const int RXPin = 0, TXPin = 19;
+static const int RXPin = 18, TXPin = 19;
 static const uint32_t GPSBaud = 9600;
 #include <Arduino.h>
 #define USE_ADAFRUIT_SHIELD_PINOUT 1
 #include <Adafruit_GFX.h> 
 #include <Adafruit_Sensor.h> 
-#include <MCUFRIEND_kbv.h>                                     //added mcufriend.kbv
+#include <MCUFRIEND_kbv.h>
 MCUFRIEND_kbv tft;
 
-//#include "TinyGPS++.h"
-
-TinyGPSPlus gps;
-
-
-//SoftwareSerial ss(RXPin, TXPin);
-
+TinyGPSPlus gps;          // May have GPS TIME calculations
 
 #include <SPI.h>
 #include "Adafruit_GFX.h"
@@ -51,13 +51,8 @@ const int diameter = 70; // Size of the compass
 int       dx = centreX, dy = centreY;
 int       last_dx = centreX, last_dy = centreY - diameter * 0.85;
 
-
-
-
-
 // For stats that happen every 5 seconds
 unsigned long last = 0UL;
-
 
 void setup()
 
@@ -67,17 +62,11 @@ void setup()
   //ss.begin(GPSBaud);
   Serial.print("What the HECK!");
 
- //}
-
-
-//{
-  Serial1.begin(9600);
-  //ss.begin(9600);         // This opens up communications to the GPS
   tft.begin();            // Start the TFT display
   tft.setRotation(5);     // Rotate screen by 90°
   tft.setTextSize(2);     // Set medium text size
   tft.setTextColor(YELLOW);
-  tft.fillScreen(BLUE);
+  tft.fillScreen(BLACK);
 }
 
 void loop() {
@@ -85,7 +74,7 @@ void loop() {
   Latitude       = gps.location.lat();
   Longitude      = gps.location.lng();
   Date           = String(gps.date.day() < 10 ? "0" : "") + String(gps.date.day()) + "/" + String(gps.date.month() < 10 ? "0" : "") + String(gps.date.month()) + "/" + String(gps.date.year());
-  //Date           = String(gps.date.month()<10?"0":"") + String(gps.date.month()) + "/" + String(gps.date.day()<10?"0":"") + String(gps.date.day()) + "/" + String(gps.date.year());
+  // Date           = String(gps.date.month()<10?"0":"") + String(gps.date.month()) + "/" + String(gps.date.day()<10?"0":"") + String(gps.date.day()) + "/" + String(gps.date.year());
   Time           = String(gps.time.hour() < 10 ? "0" : "")   + String(gps.time.hour())   + ":" +
                    String(gps.time.minute() < 10 ? "0" : "") + String(gps.time.minute()) + ":" +  String(gps.time.hour() < 10 ? "0" : "") + String(gps.time.second() < 10 ? "0" : "") + String(gps.time.second());
   Bearing        = gps.course.deg();
@@ -99,14 +88,21 @@ void loop() {
   AltitudeMILES  = gps.altitude.miles();
   AltitudeFEET   = gps.altitude.feet();
 
+// ********* This works ONLY if SAT signal is lost NOT if Pin19 is pulled out *******
+if (gps.satellites.value ()> 3 )
+   tft.fillRect(5, 5, 25, 8 * 4, GREEN); 
+else   
+   tft.fillRect(5, 5, 25, 8 * 4, RED);     //left,top,right,down * 4?, Green
 
+      
   while (Serial1.available() > 0)
-    gps.encode(Serial1.read());
+      gps.encode(Serial1.read());
+  if  (gps.location.isUpdated())
 
-
-  if (gps.location.isUpdated())
   {
   Serial.print(F("LOCATION   Fix Age="));
+    Serial.print("***************");
+    Serial.print(gps.location.isUpdated());
     Serial.print(gps.location.age());
     Serial.print(F("ms Raw Lat="));
     Serial.print(gps.location.rawLat().negative ? "-" : "+");
@@ -124,34 +120,34 @@ void loop() {
     Serial.println(gps.location.lng(), 6);
   }
 
-    
-  //Serial.println("Time\t\tDate\t\tLAT\tLON\tSATS\tAlt\tBearing\tSpeed(KPH)");
-  //Serial.println("----------------------------------------------------------------------------------");
-  //Serial.print(Time                   + "\t");
-  //Serial.print(Date                   + "\t");
-  //Serial.print(String(Latitude, 3)    + "\t");
-  //Serial.print(String(Longitude, 3)   + "\t");
-  //Serial.print(String(NumberSats)     + "\t");
-  //Serial.print(String(AltitudeMETRES) + "\t"); // Select as required
-  //Serial.print(String(Bearing)        + "\t");
-  //Serial.print(String(SpeedKPH)       + "\t"); // Select as required
-  //Serial.print(String(SpeedMPH)     + "\t"); // Select as required
-  //Serial.println("\n");
+  Serial.println("Time\t\tDate\t\tLAT\tLON\tSATS\tAlt\tBearing\tSpeed(KPH)");
+  Serial.println("----------------------------------------------------------------------------------");
+  Serial.print(Time                   + "\t");
+  Serial.print(Date                   + "\t");
+  Serial.print(String(Latitude, 3)    + "\t");
+  Serial.print(String(Longitude, 3)   + "\t");
+  Serial.print(String(NumberSats)     + "\t");
+  Serial.print(String(AltitudeMETRES) + "\t"); // Select as required
+  Serial.print(String(Bearing)        + "\t");
+  Serial.print(String(SpeedKPH)       + "\t"); // Select as required
+  Serial.print(String(SpeedMPH)       + "\t"); // Select as required
+  Serial.println("\n");
   DisplayGPSdata(NumberSats, Latitude, Longitude, AltitudeMETRES, SpeedKPH, Bearing); // Select units as required
   smartDelay(1000);
   if (millis() > 5000 && gps.charsProcessed() < 10)  Serial.println(F("No GPS data received: check wiring"));
 }
 //#####################################################################
 void DisplayGPSdata(float dNumberSats, float dLatitude, float dLongitude, float dAltitude, float dSpeed, float dBearing) {
+  
   PrintText(60, 0, "   GPS Compass", CYAN, 2);
-  tft.fillRect(45, 40, 90, 19 * 4, BLUE);
+  tft.fillRect(45, 40, 90, 19 * 4, BLACK);
   PrintText(0, 45, "LAT:" + String(dLatitude), YELLOW, 2);
   PrintText(0, 63, "LON:" + String(dLongitude), YELLOW, 2);
-  PrintText(0, 81, "ALT:" + String(dAltitude, 1) + "M", YELLOW, 2);
+  PrintText(0, 81, "ALT:" + String(dAltitude * 3.28084, 1) + " FT", YELLOW, 2);
   PrintText(0, 99, "SAT:" + String(dNumberSats, 0), YELLOW, 2);
-  tft.fillRect(80, 220, 120, 18, BLUE);
-  PrintText(10, 220, "Speed:" + String(dSpeed) + "kph", YELLOW, 2);
-  tft.fillRect(240, 220, 120, 18, BLUE);
+  tft.fillRect(80, 220, 120, 18, BLACK);
+  PrintText(10, 220, "Speed:" + String(dSpeed / 1.609) + " Mph", YELLOW, 2);
+  tft.fillRect(240, 220, 120, 18, BLACK);
   tft.setCursor(200, 220);
   tft.print("Azi: " + Bearing_to_Ordinal(dBearing));
   Display_Compass(dBearing);
@@ -203,7 +199,7 @@ void draw_arrow(int x2, int y2, int x1, int y1, int alength, int awidth, int col
 //#####################################################################
 void Display_Date_Time() {
   PrintText(0, 150, "Date/Time:", CYAN, 2);
-  tft.fillRect(0, 165, 130, 19 * 2, BLUE);
+  tft.fillRect(0, 165, 130, 19 * 2, BLACK);
   PrintText(0, 168, Time, GREEN, 2);
   PrintText(0, 188, Date, GREEN, 2);
 }
@@ -227,6 +223,7 @@ String Bearing_to_Ordinal(float bearing) {
   if (bearing >= 326.25 && bearing < 348.75) return "NNW";
   return "?";
 }
+
 //#####################################################################
 void PrintText(int x, int y, String text, int colour, byte text_size) {
   tft.setCursor(x, y);
