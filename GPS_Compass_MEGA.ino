@@ -1,4 +1,4 @@
-/* 
+/* Needs to be connected to a MEGA or you will get an error of "Serial1 not declared in this scope"
  * MEGA
  * RED TFT (ILI9341)
  * Pin19  to 4th pin on sensor
